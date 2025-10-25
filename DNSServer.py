@@ -124,10 +124,7 @@ def run_dns_server():
                 # Retrieve the data for the record and create an appropriate `rdata` object for it
                 answer_data = dns_records[qname][qtype]
                 rdata_list = []
-            else:
-                import dns.rcode
-                response.set_rcode(dns.rcode.NXDOMAIN)
-
+        
                 if qtype == dns.rdatatype.MX:
                     for pref, server in answer_data:
                         rdata_list.append(MX(dns.rdataclass.IN, dns.rdatatype.MX, int(pref), _dn.from_text(server)))
@@ -152,8 +149,13 @@ def run_dns_server():
                         rrset.add(rdata)
                     response.answer.append(rrset)
 
-            # Set the response flags
-            response.flags |= 1 << 10
+                    # Set the response flags
+                    response.flags |= 1 << 10
+
+            else:
+                import dns.rcode
+                response.set_rcode(dns.rcode.NXDOMAIN)
+
 
             # Send the response back to the client using the `server_socket.sendto` method and put the response to_wire(), return to the addr you received from
             print("Responding to request:", qname)
