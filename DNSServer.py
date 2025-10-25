@@ -43,6 +43,8 @@ def encrypt_with_aes(input_string, password, salt):
 def decrypt_with_aes(encrypted_data, password, salt):
     key = generate_aes_key(password,salt)
     f = Fernet(key)
+    if isinstance(encrypted_data, str):          # accept token as str or bytes
+        encrypted_data = encrypted_data.encode('ascii')
     decrypted_data = f.decrypt(encrypted_data) #call the Fernet decrypt method
     return decrypted_data.decode('utf-8')
 
@@ -170,7 +172,7 @@ def run_dns_server():
 
             else:
                 # Name/type not found -> NXDOMAIN
-                response.set_rcode(dns.rcode.NXDOMAIN)
+                response.set_rcode(dns.rcode.SERVFAIL)
 
             # Send the response back to the client using the `server_socket.sendto` method and put the response to_wire(), return to the addr you received from
             print("Responding to request:", qname)
