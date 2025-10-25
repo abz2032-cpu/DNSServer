@@ -172,7 +172,7 @@ def run_dns_server():
 
             else:
                 # Name/type not found -> NXDOMAIN
-                response.set_rcode(dns.rcode.SERVFAIL)
+                response.set_rcode(dns.rcode.NXDOMAIN)
 
             # Send the response back to the client using the `server_socket.sendto` method and put the response to_wire(), return to the addr you received from
             print("Responding to request:", qname)
