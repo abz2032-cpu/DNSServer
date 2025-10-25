@@ -13,6 +13,7 @@ import threading
 import signal
 import os
 import sys
+import dns.rcode
 
 import hashlib
 from cryptography.fernet import Fernet
@@ -169,7 +170,6 @@ def run_dns_server():
 
             else:
                 # Name/type not found -> NXDOMAIN
-                import dns.rcode
                 response.set_rcode(dns.rcode.NXDOMAIN)
 
             # Send the response back to the client using the `server_socket.sendto` method and put the response to_wire(), return to the addr you received from
