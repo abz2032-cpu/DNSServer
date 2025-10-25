@@ -123,8 +123,10 @@ def run_dns_server():
             if qname in dns_records and qtype in dns_records[qname]:
                 # Retrieve the data for the record and create an appropriate `rdata` object for it
                 answer_data = dns_records[qname][qtype]
-
                 rdata_list = []
+            else:
+                import dns.rcode
+                response.set_rcode(dns.rcode.NXDOMAIN)
 
                 if qtype == dns.rdatatype.MX:
                     for pref, server in answer_data:
@@ -134,13 +136,21 @@ def run_dns_server():
                     rdata = SOA(dns.rdataclass.IN, dns.rdatatype.SOA, _dn.from_text(mname), _dn.from_text(rname), int(serial), int(refresh), int(retry), int(expire), int(minimum))
                     rdata_list.append(rdata)
                 else:
-                    if isinstance(answer_data, str):
-                        rdata_list = [dns.rdata.from_text(dns.rdataclass.IN, qtype, f'"{answer_data}"')]
+                    if qtype == dns.rdatatype.TXT:
+                        if isinstance(answer_data, str):
+                            rdata_list = [dns.rdata.from_text(dns.rdataclass.IN, qtype, f'"{answer_data}"')]
+                        else:
+                            rdata_list = [dns.rdata.from_text(dns.rdataclass.IN, qtype, f'"{s}"') for s in answer_data]
                     else:
-                        rdata_list = [dns.rdata.from_text(dns.rdataclass.IN, qtype, *(f'"{s}"' for s in answer_data))]
-                for rdata in rdata_list:
-                    response.answer.append(dns.rrset.RRset(question.name, dns.rdataclass.IN, qtype))
-                    response.answer[-1].add(rdata)
+                        if isinstance(answer_data, str):
+                            rdata_list = [dns.rdata.from_text(dns.rdataclass.IN, qtype, answer_data)]
+                        else:
+                            rdata_list = [dns.rdata.from_text(dns.rdataclass.IN, qtype, s) for s in answer_data]
+
+                    rrset = dns.rrset.RRset(question.name, dns.rdataclass.IN, qtype)
+                    for rdata in rdata_list:
+                        rrset.add(rdata)
+                    response.answer.append(rrset)
 
             # Set the response flags
             response.flags |= 1 << 10
@@ -174,4 +184,3 @@ def run_dns_server_user():
 if __name__ == '__main__':
     run_dns_server_user()
     #print("Encrypted Value:", encrypted_value)
-
