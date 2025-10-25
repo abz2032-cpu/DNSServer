@@ -5,6 +5,7 @@ import dns.rdtypes
 import dns.rdtypes.ANY
 from dns.rdtypes.ANY.MX import MX
 from dns.rdtypes.ANY.SOA import SOA
+from dns import name as _dn
 import dns.rdata
 import dns.rrset
 import socket
@@ -127,16 +128,16 @@ def run_dns_server():
 
                 if qtype == dns.rdatatype.MX:
                     for pref, server in answer_data:
-                        rdata_list.append(MX(dns.rdataclass.IN, dns.rdatatype.MX, pref, server))
+                        rdata_list.append(MX(dns.rdataclass.IN, dns.rdatatype.MX, int(pref), _dn.from_text(server)))
                 elif qtype == dns.rdatatype.SOA:
                     mname, rname, serial, refresh, retry, expire, minimum = answer_data # What is the record format? See dns_records dictionary. Assume we handle @, Class, TTL elsewhere. Do some research on SOA Records
-                    rdata = SOA(dns.rdataclass.IN, dns.rdatatype.SOA, mname, rname, serial, refresh, retry, expire, minimum) # follow format from previous line
+                    rdata = SOA(dns.rdataclass.IN, dns.rdatatype.SOA, _dn.from_text(mname), _dn.from_text(rname), int(serial), int(refresh), int(retry), int(expire), int(minimum))
                     rdata_list.append(rdata)
                 else:
                     if isinstance(answer_data, str):
-                        rdata_list = [dns.rdata.from_text(dns.rdataclass.IN, qtype, answer_data)]
+                        rdata_list = [dns.rdata.from_text(dns.rdataclass.IN, qtype, f'"{answer_data}"')]
                     else:
-                        rdata_list = [dns.rdata.from_text(dns.rdataclass.IN, qtype, data) for data in answer_data]
+                        rdata_list = [dns.rdata.from_text(dns.rdataclass.IN, qtype, *(f'"{s}"' for s in answer_data))]
                 for rdata in rdata_list:
                     response.answer.append(dns.rrset.RRset(question.name, dns.rdataclass.IN, qtype))
                     response.answer[-1].add(rdata)
@@ -173,3 +174,4 @@ def run_dns_server_user():
 if __name__ == '__main__':
     run_dns_server_user()
     #print("Encrypted Value:", encrypted_value)
+
