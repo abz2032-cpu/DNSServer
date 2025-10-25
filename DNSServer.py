@@ -102,7 +102,7 @@ dns_records = {
 
 def run_dns_server():
     # Create a UDP socket and bind it to the local IP address (what unique IP address is used here, similar to webserver lab) and port (the standard port for DNS)
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # Research this
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # Research this
     server_socket.bind(('127.0.0.1', 53))
 
     while True:
@@ -124,47 +124,61 @@ def run_dns_server():
                 # Retrieve the data for the record and create an appropriate `rdata` object for it
                 answer_data = dns_records[qname][qtype]
                 rdata_list = []
-        
+
                 if qtype == dns.rdatatype.MX:
                     for pref, server in answer_data:
-                        rdata_list.append(MX(dns.rdataclass.IN, dns.rdatatype.MX, int(pref), _dn.from_text(server)))
+                        rdata_list.append(MX(
+                            dns.rdataclass.IN, dns.rdatatype.MX,
+                            int(pref), _dn.from_text(server)
+                        ))
+
                 elif qtype == dns.rdatatype.SOA:
-                    mname, rname, serial, refresh, retry, expire, minimum = answer_data # What is the record format? See dns_records dictionary. Assume we handle @, Class, TTL elsewhere. Do some research on SOA Records
-                    rdata = SOA(dns.rdataclass.IN, dns.rdatatype.SOA, _dn.from_text(mname), _dn.from_text(rname), int(serial), int(refresh), int(retry), int(expire), int(minimum))
-                    rdata_list.append(rdata)
+                    mname, rname, serial, refresh, retry, expire, minimum = answer_data
+                    rdata_list.append(SOA(
+                        dns.rdataclass.IN, dns.rdatatype.SOA,
+                        _dn.from_text(mname), _dn.from_text(rname),
+                        int(serial), int(refresh), int(retry), int(expire), int(minimum)
+                    ))
+
                 else:
                     if qtype == dns.rdatatype.TXT:
                         if isinstance(answer_data, str):
                             rdata_list = [dns.rdata.from_text(dns.rdataclass.IN, qtype, f'"{answer_data}"')]
                         else:
-                            rdata_list = [dns.rdata.from_text(dns.rdataclass.IN, qtype, f'"{s}"') for s in answer_data]
+                            rdata_list = [
+                                dns.rdata.from_text(dns.rdataclass.IN, qtype, f'"{s}"')
+                                for s in answer_data
+                            ]
                     else:
                         if isinstance(answer_data, str):
                             rdata_list = [dns.rdata.from_text(dns.rdataclass.IN, qtype, answer_data)]
                         else:
-                            rdata_list = [dns.rdata.from_text(dns.rdataclass.IN, qtype, s) for s in answer_data]
+                            rdata_list = [
+                                dns.rdata.from_text(dns.rdataclass.IN, qtype, s)
+                                for s in answer_data
+                            ]
 
-                    rrset = dns.rrset.RRset(question.name, dns.rdataclass.IN, qtype)
-                    for rdata in rdata_list:
-                        rrset.add(rdata)
-                    response.answer.append(rrset)
+                # Build one RRset for qname/qtype and add all rdata
+                rrset = dns.rrset.RRset(question.name, dns.rdataclass.IN, qtype)
+                for rdata in rdata_list:
+                    rrset.add(rdata)
+                response.answer.append(rrset)
 
-                    # Set the response flags
-                    response.flags |= 1 << 10
+                # Authoritative (AA) only when we answered from our table
+                response.flags |= 1 << 10
 
             else:
+                # Name/type not found -> NXDOMAIN
                 import dns.rcode
                 response.set_rcode(dns.rcode.NXDOMAIN)
-
 
             # Send the response back to the client using the `server_socket.sendto` method and put the response to_wire(), return to the addr you received from
             print("Responding to request:", qname)
             server_socket.sendto(response.to_wire(), addr)
-        except KeyboardInterrupt:           
+        except KeyboardInterrupt:
             print('\nExiting...')
             server_socket.close()
             sys.exit(0)
-
 
 def run_dns_server_user():
     print("Input 'q' and hit 'enter' to quit")
